@@ -1,0 +1,107 @@
+---
+title: "Crawling"
+author: "Moonjeong"
+date: "2019년 4월 18일"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(httr)
+library(urltools)
+library(rvest)
+
+```
+
+
+# 1. 다음 실시간 검색어 수집
+```{r}
+
+res_0 <- GET(url = 'https://www.daum.net/')
+
+```
+
+```{r}
+print(x = res_0)
+
+```
+
+```{r}
+searchWords <- res_0 %>% 
+  read_html() %>% 
+  html_nodes(css = 'div.realtime_part > ol > li > div > div:nth-child(1) > span.txt_issue > a') %>% 
+  html_text(trim = TRUE)
+
+```
+
+```{r}
+print(x = searchWords)
+
+```
+
+#2.네이버증권국내증시KOSPI페이지에서 상단에 있는 표 수집하기
+'https://finance.naver.com/sise/sise_index.nhn?code=KOSPI'
+
+## 불러올 표를 선택합니다
+```{r}
+res <- GET(url = 'https://finance.naver.com/sise/sise_index.nhn?code=KOSPI')      
+print(x=res)
+```
+
+```{r}
+print(x = res$request)
+print(x=res)
+```
+
+```{r}
+print(x = res$request$options$useragent)
+myUA <- 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+res <- GET(url = 'https://finance.naver.com/sise/sise_index.nhn?code=KOSPI', 
+           user_agent(agent = myUA))
+print(x = res$request)
+
+```
+
+
+##인코딩 문제를 해결하고 테이블을 불러옵니다
+```{r}
+
+html<-read_html(x=res,encoding ='EUC-KR')
+pyo<-html_node(x=html,css='#contentarea_left > div.box_top_sub > div > div.subtop_sise_detail > table')
+
+
+Sys.setlocale(category = 'LC_ALL', locale = 'C')
+
+tbl<-html_table(x=pyo,fill=TRUE)
+
+
+```
+
+```{r}
+
+
+Sys.setlocale(category = 'LC_ALL', locale = 'korean')
+
+glimpse(x = tbl)
+
+
+```
+
+##표를 1열에는 변수명, 2열에는 값이 나오도록 정리합니다
+```{r}
+print(x = tbl)
+tbl1<-cbind(tbl$X1,tbl$X2)
+tbl2<-cbind(tbl$X3,tbl$X4)
+tbl_1<-rbind(tbl1,tbl2)
+```
+
+
+##4행과 반복되는 값이 들어있는 8행을 제거합니다.
+```{r}
+
+tbl_1 <- tbl_1[-8,]
+View(tbl_1)
+
+
+```
+

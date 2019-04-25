@@ -1,0 +1,166 @@
+---
+title: "Survival Amalysis HW"
+author: "Moonjeong"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+setwd("C:\\Users\\김문정\\Desktop\\2018_2")
+library(asaur)
+library(dplyr)
+library(survival)
+library(survMisc)
+```
+
+```{r}
+(pharmacoSmoking %>%
+  filter(ttr == 0) %>%
+  select(ttr, relapse))
+
+pharm_sub1 <- pharmacoSmoking %>% 
+  filter(ttr > 0) %>% 
+  select(id, ttr, relapse, grp, gender, ageGroup4)
+glimpse(pharm_sub1)
+
+```
+
+#1.
+#Consider the data set \pharmacoSmoking" in the \asaur" R package. The primar goal is to compare the time to relapse (defined as return to smoking) between two treatment groups - triple therapy (n = 61) vs. patch for smoking cessation(n = 64) (Steinberg, M.B. Greenhaus, S. Schmelzer, A.C. Bover, M.T., Foulds, J., Hoover, D.R., and Carson, J.L. (2009) Triple-combination pharmacotherapy for medically ill smokers: A randomized trial. Annals of Internal Medicine 150, 447-454.) 
+##1-(a)
+##Conduct analyses that compares the survival functions of the two treatment groups.
+###1-(a).i. Perform the logrank test comparing the survival functions of the two treatment groups.
+```{r}
+# Creating a ten object
+pharm_test <- ten(Surv(time=ttr, event=relapse) ~ grp, data = pharm_sub1)
+comp(pharm_test)
+
+```
+###1-(a).ii. Perform the weighted logrank test with the Gehan/Breslow type weight comparing the two treatment groups.
+
+
+
+
+###1-(a).iii. Perform the weighted logrank test with the Peto/Prentice type weight comparing the two treatment groups.
+
+
+
+###1-(a).iv. What would you conclude about the two treatment groups? If you need to consider a different weight function for the weighted logrank test to draw a different conclusion, please conduct additional analyses and provide the results briefly.
+
+##1-(b).Suppose that we are concerned that the treatment group comparison may differ by gender. Perform a (weighted) stratified logrank test comparing the two treatement groups while adjusting for the gender effect.
+```{r}
+pharm_lrstr_trt_test <- survdiff(Surv(ttr, relapse) ~ grp + strata(gender), 
+                               data = pharm_sub1)
+pharm_lrstr_trt_test
+```
+
+##1-(c).Suppose that we are interested in testing whether there exists a trend in the hazard functions for different levels of age (4 levels: 21 - 34, 35 - 49, 50 - 64, 65+ ). Perform a (weighted) logrank test for trend comparing the two treatement groups.
+```{r}
+temp_pharm <- ten(Surv(ttr, relapse) ~ ageGroup4, data = pharm_sub1)
+
+comp(temp_pharm, scores = c(1, 2, 3,4)) 
+attr(temp_pharm, "tft")  # test for trend part 
+
+```
+
+#2.Fit an AFT model assuming an exponential distribution to compare the two treatment groups;
+##2-(a).Consider the treatment variable as the only predictor variable.
+###2-(a).i. Carfully state your model. Please make sure that you defined all the terms in your model.
+```{r}
+pharm_sub1 <- within(pharm_sub1, grp <- as.factor(grp))
+
+
+pharm_trt_only <- survreg(Surv(ttr, relapse) ~ grp, data = pharm_sub1, dist = 'exp')
+# Summary of the output
+summary(pharm_trt_only)
+```
+
+###2-(a).ii. Report and interpret the estimated hazard for each treatment group for with their standard errors and 95% confidence interval.
+### 1) group?? combination?? ??
+```{r}
+pharm_sub1 <- within(pharm_sub1, grp <- as.factor(grp))
+
+
+pharm_trt_only <- survreg(Surv(ttr, relapse) ~ grp, data = pharm_sub1, dist = 'exp')
+# Summary of the output
+summary(pharm_trt_only)
+
+```
+###Estimated hazard:
+###95% confidence interval for log(rho): (5.182 - 1.96 X 0.174,5.182 + 1.96 X 0.174) 
+###95% confidence interval for rho: (exp(5.182 - 1.96 X 0.174),exp(5.182 + 1.96 X 0.174))
+
+
+
+
+###2) group?? patchOnly?? ??
+```{r}
+# `relevel' function works only for a factor variable
+pharm_sub1$grp_relevel<-relevel(pharm_sub1$grp,ref="patchOnly")
+
+pharm_trt_only2 <- survreg(Surv(ttr, relapse) ~ grp_relevel, data = pharm_sub1, dist = 'exp')
+# Summary of the output
+summary(pharm_trt_only2)
+
+
+```
+###Estimated hazard:
+###95% confidence interval for log(rho): (4.459 - 1.96 X 0.151,4.459 + 1.96 X 0.151) 
+###95% confidence interval for rho: (exp(4.459 - 1.96 X 0.151),exp(4.459 + 1.96 X 0.151))
+
+
+
+### subset�� ?̿??ص? ??�� ???????? ?????ȴ?.
+```{r}
+pharm_0 <- survreg(Surv(ttr, relapse) ~ 1, subset = grp == "patchOnly", data = pharm_sub1, 
+                         dist='exponential')
+# Summary of the output
+summary(pharm_0)
+
+```
+###Estimated hazard:
+###95% confidence interval for log(rho): (4.459 - 1.96 X 0.151,4.459 + 1.96 X 0.151) 
+###95% confidence interval for rho: (exp(4.459 - 1.96 X 0.151),exp(4.459 + 1.96 X 0.151))
+```{r}
+
+# grp=combination
+pharm_1 <- survreg(Surv(ttr, relapse) ~ 1, subset = grp == "combination", data = pharm_sub1, 
+                  dist='exponential')
+# Summary 
+summary(pharm_1)
+```
+###Estimated hazard:
+###95% confidence interval for log(rho): (5.182 - 1.96 X 0.174,5.182 + 1.96 X 0.174) 
+###95% confidence interval for rho: (exp(5.182 - 1.96 X 0.174),exp(5.182 + 1.96 X 0.174))
+
+
+
+
+##2-(b).Consider including the gender and age (4-levels) variables as covariates in the regression model.
+###2-(b).i. Carfully state your model. Please make sure that you defined all the terms in your model.
+```{r}
+pharmall<- survreg(Surv(ttr, relapse)~grp+as.factor(gender)+as.factor(ageGroup4),data = pharm_sub1, dist = 'exp' )
+summary(pharmall)
+
+```
+
+###2-(b).ii. Report and interpret the estimated hazard for the "patch only" treatment group for a male who is the in "35 - 49" group with their standard errors and 95% confidence interval.
+```{r}
+pharm_sub1$gender_relevel<-relevel(pharm_sub1$gender,ref="Male")
+pharm_sub1$ageGroup4_relevel<-relevel(pharm_sub1$ageGroup4,ref="35-49")
+
+
+pharmall_p<- survreg(Surv(ttr, relapse)~grp_relevel+gender_relevel+ageGroup4_relevel,data = pharm_sub1, dist = 'exp' )
+summary(pharmall_p)
+
+```
+
+###2-(b). iii. Report and interpret the estimated difference in the log-transformed mean failure time between the two treatment groups with their standard errors and 95% confidence interval.
+```{r}
+pharmall<- survreg(Surv(ttr, relapse)~grp_relevel+as.factor(gender)+as.factor(ageGroup4),data = pharm_sub1, dist = 'exp' )
+summary(pharmall)
+
+```
+
+
+
